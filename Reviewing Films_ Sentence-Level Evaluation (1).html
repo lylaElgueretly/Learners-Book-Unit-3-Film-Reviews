@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reviewing Films: Sentence-Level Evaluation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F6EF; --paper-line:#DBD9CC; --card:#FFFFFF; --ink:#1F2D50; --muted:#3C4A6B; --pencil:#7A7368;
+  --accent:#1F2D50; --accent-ink:#F5F6EF; --good:#3F7D4E; --bad:#B23B3B;
+  --border:#E4E1D3; --highlight:#FFD966; --chip-pos:#E2EFE3; --chip-neg:#F4E3E1;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#20242A; --paper-line:#2C313A; --card:#282C34; --ink:#EDEFF5; --muted:#C7CCDA; --pencil:#9BA0AC;
+    --accent:#EDEFF5; --accent-ink:#20242A; --good:#8FCB9C; --bad:#E38B8B;
+    --border:#383D47; --highlight:#8A7229; --chip-pos:#20302A; --chip-neg:#3A2626;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#20242A; --paper-line:#2C313A; --card:#282C34; --ink:#EDEFF5; --muted:#C7CCDA; --pencil:#9BA0AC;
+  --accent:#EDEFF5; --accent-ink:#20242A; --good:#8FCB9C; --bad:#E38B8B;
+  --border:#383D47; --highlight:#8A7229; --chip-pos:#20302A; --chip-neg:#3A2626;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:
+    repeating-linear-gradient(var(--bg) 0 31px, var(--paper-line) 31px 32px),
+    var(--bg);
+  color:var(--ink);
+  font-family:'Atkinson Hyperlegible', system-ui, sans-serif;
+  font-size:17px;
+  line-height:1.55;
+}
+.wrap{max-width:900px; margin:0 auto; padding:24px 18px 60px;}
+h1{font-family:'Fraunces', Georgia, serif; font-weight:600; font-style:italic; font-size:1.7rem; margin:0 0 4px;}
+h2{font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:1.15rem; margin:0 0 10px; color:var(--accent);}
+.subtitle{color:var(--muted); font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.9rem; margin-bottom:20px;}
+.top-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:26px;}
+@media (max-width:640px){.top-grid{grid-template-columns:1fr;}}
+.card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px;}
+.card p{margin:0 0 8px;}
+.card ul{margin:6px 0 0; padding-left:20px;}
+section{margin-bottom:30px;}
+.extract{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px 20px;}
+.extract h3{font-family:'Fraunces', Georgia, serif; font-weight:600; margin-top:0;}
+.extract .byline{font-family:'Atkinson Hyperlegible', sans-serif; font-weight:bold; margin-bottom:12px;}
+.sent{cursor:pointer; padding:1px 2px; border-radius:3px;}
+.sent:hover{background:var(--highlight);}
+.sent.selected{background:var(--highlight); box-shadow:0 0 0 1px var(--accent) inset;}
+.sent.correct{background:var(--chip-pos); box-shadow:0 0 0 1px var(--good) inset;}
+.sent.missed{background:var(--chip-neg); box-shadow:0 0 0 1px var(--bad) inset;}
+.btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; font-family:'Atkinson Hyperlegible', sans-serif;}
+button{
+  font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.85rem; padding:8px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:var(--accent-ink); cursor:pointer;
+}
+button.secondary{background:transparent; color:var(--accent);}
+button:active{opacity:0.8;}
+.feedback{font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.88rem; margin-top:10px; min-height:1.2em;}
+.feedback.good{color:var(--good);}
+.feedback.bad{color:var(--bad);}
+.starter-item{border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; font-family:'Atkinson Hyperlegible', sans-serif;}
+.starter-item .feature{font-weight:bold; margin-bottom:6px;}
+.pill-row button{padding:5px 10px; font-size:0.8rem; border-radius:14px;}
+.pill-row button.chosen{background:var(--accent); color:var(--accent-ink);}
+.pill-row button.notchosen{background:transparent; color:var(--accent);}
+.timer{font-family:'Atkinson Hyperlegible', sans-serif; font-weight:bold; color:var(--accent);}
+.task{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px;}
+.chips{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.9rem;}
+.chip{padding:8px 12px; border-radius:8px; border:1px solid var(--border);}
+.chip.pos{background:var(--chip-pos);}
+.chip.neg{background:var(--chip-neg);}
+textarea{
+  width:100%; min-height:70px; font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.95rem;
+  padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--ink);
+  resize:vertical;
+}
+.hint-box, .model-box{
+  font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.85rem; margin-top:8px; padding:10px 12px;
+  border-radius:6px; display:none;
+}
+.hint-box{background:var(--chip-neg); border:1px dashed var(--bad);}
+.model-box{background:var(--chip-pos); border:1px dashed var(--good);}
+.tag{display:inline-block; font-family:'Atkinson Hyperlegible', sans-serif; font-size:0.7rem; text-transform:uppercase;
+  letter-spacing:0.05em; color:var(--muted); margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Reviewing films: finding and writing evaluative sentences</h1>
+  <p class="subtitle">Based on Cambridge Lower Secondary English, Unit 3 &ndash; Film and Fame</p>
+
+  <div class="top-grid">
+    <div class="card">
+      <h2>Lesson objective</h2>
+      <p>To identify evaluative sentences in a film review, and to write sentences that contrast a film's strengths and weaknesses using connectives such as <em>although, however, despite</em> and <em>whereas</em>.</p>
+    </div>
+    <div class="card">
+      <h2>Starter <span class="timer">(5 minutes)</span></h2>
+      <p>What makes a film good or bad? For each point below, decide: is it something a reviewer could say a film does <strong>well or badly</strong>, or is it just a <strong>fixed fact</strong> that can't really be judged? Tap your answer for each, then reveal the summary.</p>
+      <div id="starterList"></div>
+      <div class="btn-row">
+        <button id="starterSummaryBtn" class="secondary">Reveal summary</button>
+      </div>
+      <div class="feedback" id="starterProgress"></div>
+      <div class="model-box" id="starterSummaryBox"></div>
+    </div>
+  </div>
+
+  <section>
+    <h2>The extract</h2>
+    <div class="extract">
+      <h3><em>Car Trouble</em>: a film with no fuel in the tank</h3>
+      <div class="byline">By Ali Ling</div>
+      <p id="extractText"></p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Activity 1: Spot the evaluative sentences</h2>
+    <p>An <strong>evaluative sentence</strong> gives a judgement about the film &ndash; it says something is good, bad, disappointing, exciting and so on, rather than just describing what happens. Click on every sentence in the extract above that you think is evaluative.</p>
+    <div class="btn-row">
+      <button id="hintA1" class="secondary">Hint</button>
+      <button id="checkA1">Check answers</button>
+      <button id="revealA1" class="secondary">Reveal answers</button>
+    </div>
+    <div class="hint-box" id="hintA1box">Hint: look for words that judge quality (best, exciting, disappoint, shame, excellent) rather than words that simply report events (crash, kidnapped, catches up).</div>
+    <div class="feedback" id="feedbackA1"></div>
+  </section>
+
+  <section>
+    <h2>Activity 2: Write contrasting sentences</h2>
+    <p>Good reviewers often put a strength and a weakness in the <strong>same sentence</strong>, joined by a contrast connective (<em>although, however, despite, whereas, while, but</em>). Use each pair of ideas below to write one contrasting sentence of your own.</p>
+
+    <div class="task" id="task1">
+      <span class="tag">Sentence 1</span>
+      <div class="chips">
+        <div class="chip pos">+ The car chase is thrilling and well filmed.</div>
+        <div class="chip neg">&minus; The family scenes in the second half are dull.</div>
+      </div>
+      <textarea placeholder="Write your contrasting sentence here..." data-task="1"></textarea>
+      <div class="btn-row">
+        <button class="hintBtn secondary" data-task="1">Hint</button>
+        <button class="checkBtn" data-task="1">Check</button>
+        <button class="revealBtn secondary" data-task="1">Reveal model answer</button>
+      </div>
+      <div class="hint-box" data-hint="1">Hint: start with a connective, e.g. "Although..." or "While...", then give the positive point, then the negative point.</div>
+      <div class="model-box" data-model="1">Model answer: Although the car chase is thrilling and well filmed, the family scenes in the second half are dull.</div>
+      <div class="feedback" data-feedback="1"></div>
+    </div>
+
+    <div class="task" id="task2">
+      <span class="tag">Sentence 2</span>
+      <div class="chips">
+        <div class="chip pos">+ Jonny Jonsson is a talented actor.</div>
+        <div class="chip neg">&minus; His talent is wasted in this disappointing film.</div>
+      </div>
+      <textarea placeholder="Write your contrasting sentence here..." data-task="2"></textarea>
+      <div class="btn-row">
+        <button class="hintBtn secondary" data-task="2">Hint</button>
+        <button class="checkBtn" data-task="2">Check</button>
+        <button class="revealBtn secondary" data-task="2">Reveal model answer</button>
+      </div>
+      <div class="hint-box" data-hint="2">Hint: try "Despite..." followed by a noun phrase (Despite being a talented actor...), then the negative point.</div>
+      <div class="model-box" data-model="2">Model answer: Despite being a talented actor, Jonny Jonsson is wasted in this disappointing film.</div>
+      <div class="feedback" data-feedback="2"></div>
+    </div>
+
+    <div class="task" id="task3">
+      <span class="tag">Sentence 3</span>
+      <div class="chips">
+        <div class="chip pos">+ The film's acting is strong throughout.</div>
+        <div class="chip neg">&minus; Very little actually happens in the plot.</div>
+      </div>
+      <textarea placeholder="Write your contrasting sentence here..." data-task="3"></textarea>
+      <div class="btn-row">
+        <button class="hintBtn secondary" data-task="3">Hint</button>
+        <button class="checkBtn" data-task="3">Check</button>
+        <button class="revealBtn secondary" data-task="3">Reveal model answer</button>
+      </div>
+      <div class="hint-box" data-hint="3">Hint: this is very close to a sentence actually used in the review itself &ndash; look at the last line of the second paragraph for inspiration.</div>
+      <div class="model-box" data-model="3">Model answer (from the original review): Although it's well acted, nothing much happens.</div>
+      <div class="feedback" data-feedback="3"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+// ---------- Extract with clickable sentences ----------
+var sentences = [
+  {t:"Car Trouble is the final film in a sequence of three films directed by Emil Smith.", eval:false},
+  {t:"Those of you who watched the previous film \u2013 Going Nowhere Fast \u2013 might be a bit disappointed with this one.", eval:false},
+  {t:"It\u2019s not the best.", eval:true},
+  {t:"The film, set in 1950s America, starts with a fast car chase, at the end of which a big crash occurs.", eval:false},
+  {t:"Fortunately, no one is seriously hurt.", eval:false},
+  {t:"Emerging from the wreckage is Sam Priest, the main character who is played by Jonny Jonsson.", eval:false},
+  {t:"The story then goes back in time to explain how the car chase happened.", eval:false},
+  {t:"Priest\u2019s wife, Melissa (played by Kim Stone), had been kidnapped by Priest\u2019s business rival.", eval:false},
+  {t:"After a ransom demand and some detective work, Priest catches up with the kidnappers, leading to the car chase.", eval:false},
+  {t:"This is probably the best part of the film.", eval:true},
+  {t:"The second half is much less exciting.", eval:true},
+  {t:"It focuses on the family life of Sam and Melissa Priest, and although it\u2019s well acted, nothing much happens.", eval:true},
+  {t:"This final film of three will disappoint many fans.", eval:true},
+  {t:"It\u2019s a particular shame for Jonny Jonsson, an actor with so much talent.", eval:true},
+  {t:"My advice would be to wait until his new film, A New Tomorrow, comes out at the end of the month.", eval:false},
+  {t:"Early reviews suggest it is excellent.", eval:true}
+];
+
+var extractEl = document.getElementById('extractText');
+sentences.forEach(function(s, i){
+  var span = document.createElement('span');
+  span.className = 'sent';
+  span.dataset.idx = i;
+  span.dataset.eval = s.eval;
+  span.textContent = s.t + ' ';
+  span.addEventListener('click', function(){
+    span.classList.toggle('selected');
+  });
+  extractEl.appendChild(span);
+});
+
+document.getElementById('hintA1').addEventListener('click', function(){
+  var box = document.getElementById('hintA1box');
+  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+});
+
+document.getElementById('checkA1').addEventListener('click', function(){
+  var spans = extractEl.querySelectorAll('.sent');
+  var correct = 0, wrongSelected = 0, missed = 0, totalEval = 0;
+  spans.forEach(function(sp){
+    sp.classList.remove('correct','missed');
+    var isEval = sp.dataset.eval === 'true';
+    var isSel = sp.classList.contains('selected');
+    if(isEval) totalEval++;
+    if(isEval && isSel) correct++;
+    if(!isEval && isSel) wrongSelected++;
+    if(isEval && !isSel) missed++;
+  });
+  var fb = document.getElementById('feedbackA1');
+  if(correct === totalEval && wrongSelected === 0){
+    fb.textContent = 'All ' + totalEval + ' evaluative sentences correctly identified, with no false positives. Well done.';
+    fb.className = 'feedback good';
+  } else {
+    fb.textContent = 'You found ' + correct + ' of ' + totalEval + ' evaluative sentences' + (wrongSelected ? ', and selected ' + wrongSelected + ' that are not evaluative' : '') + '. Try again, or reveal the answers.';
+    fb.className = 'feedback bad';
+  }
+});
+
+document.getElementById('revealA1').addEventListener('click', function(){
+  var spans = extractEl.querySelectorAll('.sent');
+  spans.forEach(function(sp){
+    sp.classList.remove('selected','missed');
+    if(sp.dataset.eval === 'true'){
+      sp.classList.add('correct');
+    }
+  });
+  var fb = document.getElementById('feedbackA1');
+  fb.textContent = 'The highlighted sentences above are the evaluative ones.';
+  fb.className = 'feedback good';
+});
+
+// ---------- Starter: what makes a film good or bad? ----------
+var starterItems = [
+  {feature:'The quality of the acting', answer:'Can be judged'},
+  {feature:'The special effects', answer:'Can be judged'},
+  {feature:'The film\u2019s running time', answer:'Just a fact'},
+  {feature:'How exciting or gripping the plot is', answer:'Can be judged'},
+  {feature:'The name of the director', answer:'Just a fact'},
+  {feature:'The pacing \u2013 does it drag, or keep you hooked?', answer:'Can be judged'},
+  {feature:'The dialogue and script', answer:'Can be judged'},
+  {feature:'The release date', answer:'Just a fact'},
+  {feature:'Whether the ending is satisfying', answer:'Can be judged'},
+  {feature:'The ticket price', answer:'Just a fact'}
+];
+var starterList = document.getElementById('starterList');
+var starterAnswered = {};
+starterItems.forEach(function(item, i){
+  var div = document.createElement('div');
+  div.className = 'starter-item';
+  div.innerHTML = '<div class="feature">' + item.feature + '</div>' +
+    '<div class="pill-row">' +
+    '<button data-choice="Can be judged" data-i="'+i+'" class="notchosen">Can be judged good/bad</button> ' +
+    '<button data-choice="Just a fact" data-i="'+i+'" class="notchosen">Just a fact</button>' +
+    '</div><div class="feedback" id="starterFb'+i+'"></div>';
+  starterList.appendChild(div);
+});
+function updateStarterProgress(){
+  var progress = document.getElementById('starterProgress');
+  var n = Object.keys(starterAnswered).length;
+  progress.className = 'feedback';
+  progress.textContent = n + ' of ' + starterItems.length + ' answered.';
+}
+starterList.addEventListener('click', function(e){
+  if(e.target.tagName !== 'BUTTON') return;
+  var i = e.target.dataset.i;
+  var choice = e.target.dataset.choice;
+  var buttons = starterList.querySelectorAll('[data-i="'+i+'"]');
+  buttons.forEach(function(b){ b.className = 'notchosen'; });
+  e.target.className = 'chosen';
+  starterAnswered[i] = choice;
+  var fb = document.getElementById('starterFb'+i);
+  var correct = starterItems[i].answer;
+  if(choice === correct){
+    fb.textContent = 'Correct.';
+    fb.className = 'feedback good';
+  } else {
+    fb.textContent = 'Not quite \u2013 the answer is: ' + correct + '.';
+    fb.className = 'feedback bad';
+  }
+  updateStarterProgress();
+});
+document.getElementById('starterSummaryBtn').addEventListener('click', function(){
+  var box = document.getElementById('starterSummaryBox');
+  if(box.style.display === 'block'){
+    box.style.display = 'none';
+    return;
+  }
+  var judgeable = starterItems.filter(function(it){ return it.answer === 'Can be judged'; })
+    .map(function(it){ return it.feature; });
+  box.innerHTML = '<strong>These are the kinds of things a review can evaluate:</strong><ul style="margin:8px 0 0; padding-left:20px;">' +
+    judgeable.map(function(f){ return '<li>' + f + '</li>'; }).join('') +
+    '</ul><p style="margin:10px 0 0;">Facts like the running time, director or release date can be <em>mentioned</em> in a review, but they can\u2019t be called good or bad. Keep this list in mind as you read the extract below \u2013 look out for sentences that judge these things.</p>';
+  box.style.display = 'block';
+});
+updateStarterProgress();
+
+// ---------- Activity 2: sentence writing tasks ----------
+document.querySelectorAll('.hintBtn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var t = btn.dataset.task;
+    var box = document.querySelector('[data-hint="'+t+'"]');
+    box.style.display = box.style.display === 'block' ? 'none' : 'block';
+  });
+});
+document.querySelectorAll('.revealBtn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var t = btn.dataset.task;
+    var box = document.querySelector('[data-model="'+t+'"]');
+    box.style.display = box.style.display === 'block' ? 'none' : 'block';
+  });
+});
+var connectives = ['although','however','despite','whereas','while','but','yet','even though','in spite of'];
+document.querySelectorAll('.checkBtn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var t = btn.dataset.task;
+    var ta = document.querySelector('textarea[data-task="'+t+'"]');
+    var fb = document.querySelector('[data-feedback="'+t+'"]');
+    var text = (ta.value || '').trim();
+    var lower = text.toLowerCase();
+    if(text.length < 8){
+      fb.textContent = 'Write a full sentence first.';
+      fb.className = 'feedback bad';
+      return;
+    }
+    var hasConnective = connectives.some(function(c){ return lower.indexOf(c) !== -1; });
+    var hasComma = text.indexOf(',') !== -1;
+    if(hasConnective && text.length > 25){
+      fb.textContent = 'Good \u2013 your sentence uses a contrast connective and combines both ideas. Check it also makes grammatical sense, then compare it with the model answer.';
+      fb.className = 'feedback good';
+    } else if(!hasConnective){
+      fb.textContent = 'This does not yet read as a contrast sentence. Try adding a connective such as although, however, despite or whereas.' + (hasComma ? '' : ' A comma after the first clause usually helps too.');
+      fb.className = 'feedback bad';
+    } else {
+      fb.textContent = 'You have a connective, but try developing the sentence a little further so both the strength and the weakness are clearly stated.';
+      fb.className = 'feedback bad';
+    }
+  });
+});
+</script>
+</body>
+</html>
